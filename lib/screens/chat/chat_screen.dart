@@ -9,20 +9,96 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
-  final List<ChatMessage> _messages = [];
+
+  List<OpenAIChatCompletionChoiceMessageModel> _getOpenAIMessages(
+      List<ChatMessage> messages, int groupId) {
+    return messages
+        .where((e) => e.groupId == groupId && e.role != "error")
+        .map((e) {
+      OpenAIChatMessageRole role;
+      switch (e.role) {
+        case "user":
+          role = OpenAIChatMessageRole.user;
+          break;
+        case "system":
+          role = OpenAIChatMessageRole.system;
+          break;
+        case "assistant":
+          role = OpenAIChatMessageRole.assistant;
+          break;
+        default:
+          throw Exception("Unknown role: ${e.role}");
+      }
+      return OpenAIChatCompletionChoiceMessageModel(
+        content: e.text,
+        role: role,
+      );
+    }).toList();
+  }
+
+  void _getOpenAIMessage(String text) async {
+    SettingsProvider settingsProvider =
+        Provider.of<SettingsProvider>(context, listen: false);
+    ChatsProvider chatsProvider =
+        Provider.of<ChatsProvider>(context, listen: false);
+
+    int id = chatsProvider.getLastId() + 1;
+    int groupId = chatsProvider.getLastGroupId();
+
+    chatsProvider.addMessage(ChatMessage(
+      id: id,
+      groupId: groupId,
+      role: "user",
+      text: text,
+      senderName: "User",
+      timestamp: DateTime.now(),
+    ));
+
+    if (settingsProvider.apiKey.isEmpty) {
+      chatsProvider.addMessage(ChatMessage(
+        id: id,
+        groupId: groupId,
+        role: "error",
+        text: "APIキーを設定すると、OpenAIのAPIを利用できます。",
+        senderName: "System",
+        timestamp: DateTime.now(),
+      ));
+      return;
+    }
+
+    try {
+      OpenAI.apiKey = settingsProvider.apiKey;
+      OpenAIChatCompletionModel chatCompletion = await OpenAI.instance.chat
+          .create(
+              model: settingsProvider.langModel,
+              messages: _getOpenAIMessages(chatsProvider.messages, groupId));
+      chatsProvider.addMessage(ChatMessage(
+        id: id + 1,
+        groupId: groupId,
+        role: "assistant",
+        text: chatCompletion.choices.first.message.content,
+        senderName: "Assistant",
+        timestamp: DateTime.now(),
+      ));
+    } catch (e) {
+      chatsProvider.addMessage(ChatMessage(
+        id: id + 1,
+        groupId: groupId,
+        role: "error",
+        text: e.toString(),
+        senderName: "System",
+        timestamp: DateTime.now(),
+      ));
+    }
+  }
 
   void _handleSubmitted(String text) {
     _textController.clear();
     if (text.isEmpty) {
       return;
     }
-    ChatMessage message = ChatMessage(
-      text: text,
-      name: "User",
-    );
-    setState(() {
-      _messages.insert(0, message);
-    });
+
+    _getOpenAIMessage(text);
   }
 
   void _showTemplates(List<String> messages) {
@@ -77,8 +153,18 @@ class ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final MessagesProvider messagesProvider =
-        Provider.of<MessagesProvider>(context, listen: true);
+    final ChatsProvider chatsProvider =
+        Provider.of<ChatsProvider>(context, listen: true);
+    final SettingsProvider settingsProvider =
+        Provider.of<SettingsProvider>(context, listen: true);
+    final chatMessages = chatsProvider.messages
+        .map((chatMessage) => ChatMessageFrame(
+              text: chatMessage.text,
+              name: chatMessage.senderName,
+            ))
+        .toList()
+        .reversed
+        .toList();
 
     return Scaffold(
       body: Column(
@@ -87,8 +173,8 @@ class ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               padding: const EdgeInsets.all(8.0),
               reverse: true,
-              itemBuilder: (_, int index) => _messages[index],
-              itemCount: _messages.length,
+              itemBuilder: (_, int index) => chatMessages[index],
+              itemCount: chatMessages.length,
             ),
           ),
           const Divider(height: 1.0),
@@ -96,7 +182,7 @@ class ChatScreenState extends State<ChatScreen> {
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
             ),
-            child: _buildTextComposer(messagesProvider.messages),
+            child: _buildTextComposer(settingsProvider.templates),
           ),
         ],
       ),
@@ -104,15 +190,18 @@ class ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class ChatMessage extends StatelessWidget {
+class ChatMessageFrame extends StatelessWidget {
   final String text;
   final String name;
 
-  const ChatMessage({Key? key, required this.text, this.name = ''})
+  const ChatMessageFrame({Key? key, required this.text, this.name = ''})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final Color bgColor =
+        name == "User" ? Colors.grey.shade50 : Colors.grey.shade100;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       decoration: BoxDecoration(
@@ -121,6 +210,7 @@ class ChatMessage extends StatelessWidget {
           width: 1.0,
         ),
         borderRadius: BorderRadius.circular(10.0),
+        color: bgColor,
       ),
       padding: const EdgeInsets.all(10.0),
       child: Row(

@@ -1,18 +1,25 @@
 import 'common.dart';
 
-void main() {
-  runApp(const MainApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Bindingの初期化
+  final prefs = await SharedPreferences.getInstance();
+
+  runApp(MainApp(prefs: prefs));
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({Key? key}) : super(key: key);
+  final SharedPreferences prefs;
+
+  const MainApp({Key? key, required this.prefs}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
         providers: [
-          ChangeNotifierProvider<MessagesProvider>(
-              create: (context) => MessagesProvider()),
+          ChangeNotifierProvider<SettingsProvider>(
+              create: (context) => SettingsProvider(prefs)),
+          ChangeNotifierProvider<ChatsProvider>(
+              create: (context) => ChatsProvider(prefs)),
         ],
         child: MaterialApp(
           title: 'TemplAI',
@@ -24,6 +31,14 @@ class MainApp extends StatelessWidget {
             '/menu': (BuildContext context) => const MenuScreen(),
             '/chat': (BuildContext context) => const ChatScreen(),
             '/editMessage': (BuildContext context) => const EditMessageScreen(),
+            '/setting': (BuildContext context) => const SettingScreen(),
+          },
+          onGenerateRoute: (settings) {
+            if (settings.name == '/webView') {
+              return MaterialPageRoute(
+                  builder: (context) => settings.arguments as WebViewScreen);
+            }
+            return null;
           },
           initialRoute: '/',
         ));

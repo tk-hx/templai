@@ -25,12 +25,17 @@ class MenuScreen extends StatelessWidget {
         children: <Widget>[
           const DrawerHeader(
             decoration: BoxDecoration(),
-            child: Text('Setting'),
+            child: Text('メニュー'),
           ),
           ListTile(
             title: const Text("定型文編集"),
-            trailing: const Icon(Icons.arrow_forward),
+            trailing: const Icon(Icons.edit_note),
             onTap: () => Navigator.pushNamed(context, '/editMessage'),
+          ),
+          ListTile(
+            title: const Text("設定"),
+            trailing: const Icon(Icons.settings),
+            onTap: () => Navigator.pushNamed(context, '/setting'),
           ),
         ],
       ),

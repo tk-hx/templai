@@ -8,30 +8,8 @@ class EditMessageScreen extends StatefulWidget {
 }
 
 class EditMessageScreenState extends State<EditMessageScreen> {
-  void _addMessage(String value) {
-    setState(() {
-      Provider.of<MessagesProvider>(context, listen: false).messages.add(value);
-    });
-    Navigator.of(context).pop();
-  }
-
-  void _removeMessage(int index) {
-    setState(() {
-      Provider.of<MessagesProvider>(context, listen: false)
-          .messages
-          .removeAt(index);
-    });
-  }
-
-  void _editMessage(int index, String value) {
-    setState(() {
-      Provider.of<MessagesProvider>(context, listen: false).messages[index] =
-          value;
-    });
-    Navigator.of(context).pop();
-  }
-
-  void _showAddMessageDialog() {
+  void _showAddMessageDialog(SettingsProvider settingsProvider) {
+    final templates = settingsProvider.templates;
     final controller = TextEditingController();
 
     showDialog(
@@ -48,7 +26,9 @@ class EditMessageScreenState extends State<EditMessageScreen> {
               onPressed: () {
                 final newValue = controller.text.trim();
                 if (newValue.isNotEmpty) {
-                  _addMessage(newValue);
+                  templates.add(newValue);
+                  settingsProvider.templates = templates;
+                  Navigator.of(context).pop();
                 }
               },
               child: const Text('OK'),
@@ -65,10 +45,9 @@ class EditMessageScreenState extends State<EditMessageScreen> {
     );
   }
 
-  void _showEditMessageDialog(int index) {
-    final message =
-        Provider.of<MessagesProvider>(context, listen: false).messages[index];
-    final controller = TextEditingController(text: message);
+  void _showEditMessageDialog(SettingsProvider settingsProvider, int index) {
+    final templates = settingsProvider.templates;
+    final controller = TextEditingController(text: templates[index]);
 
     showDialog(
       context: context,
@@ -89,7 +68,9 @@ class EditMessageScreenState extends State<EditMessageScreen> {
             TextButton(
               onPressed: () {
                 if (controller.text.isNotEmpty) {
-                  _editMessage(index, controller.text);
+                  templates[index] = controller.text;
+                  settingsProvider.templates = templates;
+                  Navigator.of(context).pop();
                 }
               },
               child: const Text('OK'),
@@ -108,20 +89,21 @@ class EditMessageScreenState extends State<EditMessageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> messages = Provider.of<MessagesProvider>(context).messages;
+    SettingsProvider settingsProvider = Provider.of<SettingsProvider>(context);
+    final templates = settingsProvider.templates;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('定型文編集'),
       ),
       body: ListView.builder(
-        itemCount: messages.length,
+        itemCount: settingsProvider.templates.length,
         itemBuilder: (BuildContext context, int index) {
           return Dismissible(
-            key: ValueKey(messages[index]),
+            key: ValueKey(settingsProvider.templates[index]),
             onDismissed: (direction) {
-              final removedMessage = messages[index];
-              _removeMessage(index);
+              final removedMessage = templates.removeAt(index);
+              settingsProvider.templates = templates;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text('定型文を削除しました'),
@@ -129,7 +111,8 @@ class EditMessageScreenState extends State<EditMessageScreen> {
                     label: '元に戻す',
                     onPressed: () {
                       setState(() {
-                        messages.insert(index, removedMessage);
+                        templates.insert(index, removedMessage);
+                        settingsProvider.templates = templates;
                       });
                     },
                   ),
@@ -137,11 +120,11 @@ class EditMessageScreenState extends State<EditMessageScreen> {
               );
             },
             child: ListTile(
-              title: Text(messages[index]),
+              title: Text(settingsProvider.templates[index]),
               trailing: IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () {
-                  _showEditMessageDialog(index);
+                  _showEditMessageDialog(settingsProvider, index);
                 },
               ),
             ),
@@ -151,7 +134,7 @@ class EditMessageScreenState extends State<EditMessageScreen> {
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
-          _showAddMessageDialog();
+          _showAddMessageDialog(settingsProvider);
         },
       ),
     );
