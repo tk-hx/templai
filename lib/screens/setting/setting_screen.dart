@@ -130,12 +130,6 @@ class SettingScreenState extends State<SettingScreen> {
   }
 }
 
-// Navigator.pushNamed(context, '/webView',
-//     arguments: const WebViewScreen(
-//         pageTitle: 'API Keyを取得',
-//         urlString:
-//             'https://platform.openai.com/account/api-keys'));
-
 class WebViewScreen extends StatefulWidget {
   const WebViewScreen(
       {Key? key, required this.pageTitle, required this.urlString})
