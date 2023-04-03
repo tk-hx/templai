@@ -3,6 +3,8 @@ export 'package:provider/provider.dart';
 export 'package:shared_preferences/shared_preferences.dart';
 export 'package:dart_openai/openai.dart';
 
+export 'package:templai/shared/custom_alert_dialog.dart';
+
 export 'package:templai/models/settings_provider.dart';
 export 'package:templai/models/chats_provider.dart';
 

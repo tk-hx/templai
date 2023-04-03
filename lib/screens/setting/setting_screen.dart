@@ -50,6 +50,14 @@ class SettingScreenState extends State<SettingScreen> {
   Widget build(BuildContext context) {
     SettingsProvider settingsProvider = Provider.of<SettingsProvider>(context);
     _apiController.text = settingsProvider.apiKey;
+    var models = <String>[
+      'gpt-3.5-turbo',
+      // 'text-davinci-003',
+      // 'gpt-4',
+    ];
+    int modelsIndex = models.indexOf(settingsProvider.langModel) > 0
+        ? models.indexOf(settingsProvider.langModel)
+        : 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -98,24 +106,17 @@ class SettingScreenState extends State<SettingScreen> {
                 '利用モデル',
                 style: TextStyle(fontSize: 18.0),
               ),
-              DropdownButton(
-                value: settingsProvider.langModel,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'gpt-3.5-turbo',
-                    child: Text('GPT 3.5 Turbo'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'text-davinci-003',
-                    child: Text('GPT 3.5'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'gpt-4',
-                    child: Text('GPT 4'),
-                  ),
-                ],
+              DropdownButton<String>(
+                value: models[modelsIndex],
+                items: models.map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
                 onChanged: (value) {
                   settingsProvider.langModel = value.toString();
+                  modelsIndex = models.indexOf(settingsProvider.langModel);
                 },
               ),
             ],

@@ -1,8 +1,16 @@
+import 'package:flutter/foundation.dart';
+
 import 'common.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Bindingの初期化
   final prefs = await SharedPreferences.getInstance();
+
+  LicenseRegistry.addLicense(() async* {
+    final license = await rootBundle.loadString('lib/assets/fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks(['google_fonts'], license);
+  });
 
   runApp(MainApp(prefs: prefs));
 }
@@ -24,7 +32,8 @@ class MainApp extends StatelessWidget {
         child: MaterialApp(
           title: 'TemplAI',
           theme: ThemeData(
-            primarySwatch: Colors.blue,
+            primarySwatch: Colors.blueGrey,
+            fontFamily: 'NotoSansJapanse',
           ),
           routes: <String, WidgetBuilder>{
             '/': (BuildContext context) => const HomeScreen(),

@@ -99,34 +99,38 @@ class EditMessageScreenState extends State<EditMessageScreen> {
       body: ListView.builder(
         itemCount: settingsProvider.templates.length,
         itemBuilder: (BuildContext context, int index) {
-          return Dismissible(
-            key: ValueKey(settingsProvider.templates[index]),
-            onDismissed: (direction) {
-              final removedMessage = templates.removeAt(index);
-              settingsProvider.templates = templates;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('定型文を削除しました'),
-                  action: SnackBarAction(
-                    label: '元に戻す',
-                    onPressed: () {
-                      setState(() {
-                        templates.insert(index, removedMessage);
-                        settingsProvider.templates = templates;
-                      });
-                    },
-                  ),
+          return ListTile(
+            title: Text(settingsProvider.templates[index]),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.edit),
+                  onPressed: () {
+                    _showEditMessageDialog(settingsProvider, index);
+                  },
                 ),
-              );
-            },
-            child: ListTile(
-              title: Text(settingsProvider.templates[index]),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () {
-                  _showEditMessageDialog(settingsProvider, index);
-                },
-              ),
+                IconButton(
+                  padding: const EdgeInsets.all(0.0),
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    CustomAlertDialog(
+                        message: '${settingsProvider.templates[index]}を削除しますか？',
+                        content: 'この操作は取り消せません。',
+                        confirmText: '削除',
+                        onConfirm: () {
+                          setState(() {
+                            templates.removeAt(index);
+                            settingsProvider.templates = templates;
+                          });
+                          Navigator.pop(context);
+                        }).show(context);
+                  },
+                ),
+              ],
             ),
           );
         },

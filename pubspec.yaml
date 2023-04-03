@@ -10,6 +10,8 @@ dependencies:
   dart_openai: ^1.9.1
   flutter:
     sdk: flutter
+  flutter_native_splash: ^2.2.19
+  flutter_launcher_icons: ^0.12.0
   provider: ^6.0.5
   shared_preferences: ^2.0.20
   url_launcher: ^6.1.10
@@ -22,3 +24,31 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - lib/assets/fonts/OFL.txt
+  fonts:
+    - family: NotoSansJapanse
+      fonts:
+        - asset: lib/assets/fonts/NotoSansJP-Regular.otf
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: lib/assets/imgs/splash.png  
+  android_12:
+    color: "#FFFFFF"
+    image: lib/assets/imgs/splash.png
+  fullscreen: true
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "lib/assets/imgs/icon.png"
+  min_sdk_android: 19
+  web:
+    generate: true
+    image_path: "lib/assets/imgs/icon.png"
+    icon_size: 256
+  macos:
+    generate: true
+    imag_path: "lib/assets/imgs/icon.png"

@@ -43,7 +43,7 @@ class ChatScreenState extends State<ChatScreen> {
         Provider.of<ChatsProvider>(context, listen: false);
 
     int id = chatsProvider.getLastId() + 1;
-    int groupId = chatsProvider.getLastGroupId();
+    int groupId = chatsProvider.getCurrentGroupId();
 
     chatsProvider.addMessage(ChatMessage(
       id: id,
@@ -53,6 +53,8 @@ class ChatScreenState extends State<ChatScreen> {
       senderName: "User",
       timestamp: DateTime.now(),
     ));
+
+    id++;
 
     if (settingsProvider.apiKey.isEmpty) {
       chatsProvider.addMessage(ChatMessage(
@@ -66,30 +68,32 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
 
+    ChatMessage message = ChatMessage(
+      id: id,
+      groupId: groupId,
+      role: "system",
+      text: "...",
+      senderName: "System",
+      timestamp: DateTime.now(),
+    );
+    chatsProvider.addMessage(message);
+
     try {
       OpenAI.apiKey = settingsProvider.apiKey;
       OpenAIChatCompletionModel chatCompletion = await OpenAI.instance.chat
           .create(
               model: settingsProvider.langModel,
               messages: _getOpenAIMessages(chatsProvider.messages, groupId));
-      chatsProvider.addMessage(ChatMessage(
-        id: id + 1,
-        groupId: groupId,
-        role: "assistant",
-        text: chatCompletion.choices.first.message.content,
-        senderName: "Assistant",
-        timestamp: DateTime.now(),
-      ));
+      message.role = "assistant";
+      message.text = chatCompletion.choices.first.message.content;
+      message.senderName = "Assistant";
     } catch (e) {
-      chatsProvider.addMessage(ChatMessage(
-        id: id + 1,
-        groupId: groupId,
-        role: "error",
-        text: e.toString(),
-        senderName: "System",
-        timestamp: DateTime.now(),
-      ));
+      message.role = "error";
+      message.text = e.toString();
+      message.senderName = "System";
     }
+    message.timestamp = DateTime.now();
+    chatsProvider.editMessage(message, id);
   }
 
   void _handleSubmitted(String text) {
@@ -130,7 +134,7 @@ class ChatScreenState extends State<ChatScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.list),
             onPressed: () => _showTemplates(messages),
           ),
           Flexible(
@@ -157,7 +161,8 @@ class ChatScreenState extends State<ChatScreen> {
         Provider.of<ChatsProvider>(context, listen: true);
     final SettingsProvider settingsProvider =
         Provider.of<SettingsProvider>(context, listen: true);
-    final chatMessages = chatsProvider.messages
+    final chatMessages = chatsProvider
+        .getMessagesByGroupId()
         .map((chatMessage) => ChatMessageFrame(
               text: chatMessage.text,
               name: chatMessage.senderName,

@@ -45,17 +45,12 @@ class SettingsProvider with ChangeNotifier {
         final settingModel = SettingModel.fromJson(decodedJson);
         _templates = settingModel.templates;
         _apiKey = settingModel.apiKey;
-        _langModel = (settingModel.langModel.isEmpty)
-            ? 'gpt-3.5-turbo'
-            : settingModel.langModel;
+        _langModel = settingModel.langModel;
       } catch (e) {
-        _templates = [];
-        _apiKey = '';
-        _langModel = '';
-        _updateSettingModel();
-        return;
+        // 何もしない
       }
     }
+    _updateSettingModel();
   }
 
   List<String> get templates => _templates;
