@@ -10,31 +10,25 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('TemplAI'),
-        actions: (chatsProvider.getLastGroupId() == 0 &&
-                chatsProvider.getCurrentGroupId() == 0)
+        actions: (chatsProvider.chatRooms.length <= 1)
             ? []
             : [
                 IconButton(
                   onPressed: () {
                     // 左側のアイコンをタップしたときの処理
-                    if (chatsProvider.getLastGroupId() >
-                        chatsProvider.getCurrentGroupId()) {
-                      chatsProvider.incrementGroupId();
-                    }
+                    chatsProvider.incrementCurrentChatRoom();
                   },
                   icon: const Icon(Icons.keyboard_arrow_left, size: 24),
                 ),
                 Container(
                     alignment: Alignment.center,
                     child: Text(
-                        '${chatsProvider.getCurrentGroupId() + 1} / ${chatsProvider.getLastGroupId() + 1}',
+                        '${chatsProvider.getCurrentChatRoomIndex() + 1} / ${chatsProvider.chatRooms.length}',
                         style: const TextStyle(fontSize: 20))),
                 IconButton(
                   onPressed: () {
                     // 右側のアイコンをタップしたときの処理
-                    if (chatsProvider.getCurrentGroupId() > 0) {
-                      chatsProvider.decrementGroupId();
-                    }
+                    chatsProvider.decrementCurrentChatRoom();
                   },
                   icon: const Icon(Icons.keyboard_arrow_right, size: 24),
                 ),
@@ -73,7 +67,7 @@ class MenuScreen extends StatelessWidget {
               title: const Text("新規チャット"),
               trailing: const Icon(Icons.add),
               onTap: () {
-                chatsProvider.incrementGroupId();
+                chatsProvider.incrementCurrentChatRoom(append: true);
                 Navigator.pop(context);
               }),
           ListTile(
@@ -85,7 +79,8 @@ class MenuScreen extends StatelessWidget {
                     content: 'この操作は取り消せません。',
                     confirmText: '消去',
                     onConfirm: () {
-                      chatsProvider.removeMessage();
+                      chatsProvider
+                          .deleteChatRoom(chatsProvider.currentChatRoom.id);
                       Navigator.pop(context);
                     }).show(context);
               }),
@@ -104,7 +99,7 @@ class MenuScreen extends StatelessWidget {
                     content: 'この操作は取り消せません。',
                     confirmText: '全消去',
                     onConfirm: () {
-                      chatsProvider.removeAllMessage();
+                      chatsProvider.deleteAllChatRoom();
                       Navigator.pop(context);
                     }).show(context);
               }),

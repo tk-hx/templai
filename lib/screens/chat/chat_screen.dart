@@ -11,9 +11,9 @@ class ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
 
   List<OpenAIChatCompletionChoiceMessageModel> _getOpenAIMessages(
-      List<ChatMessage> messages, int groupId) {
-    return messages
-        .where((e) => e.groupId == groupId && e.role != "error")
+      ChatRoom chatRoom) {
+    return chatRoom.messages
+        .where((e) => e.role != "error" && e.role != "blank")
         .map((e) {
       OpenAIChatMessageRole role;
       switch (e.role) {
@@ -42,58 +42,35 @@ class ChatScreenState extends State<ChatScreen> {
     ChatsProvider chatsProvider =
         Provider.of<ChatsProvider>(context, listen: false);
 
-    int id = chatsProvider.getLastId() + 1;
-    int groupId = chatsProvider.getCurrentGroupId();
-
-    chatsProvider.addMessage(ChatMessage(
-      id: id,
-      groupId: groupId,
-      role: "user",
-      text: text,
-      senderName: "User",
-      timestamp: DateTime.now(),
-    ));
-
-    id++;
+    chatsProvider.addMessageToCurrentChatRoom(text, "user", "User");
 
     if (settingsProvider.apiKey.isEmpty) {
-      chatsProvider.addMessage(ChatMessage(
-        id: id,
-        groupId: groupId,
-        role: "error",
-        text: "APIキーを設定すると、OpenAIのAPIを利用できます。",
-        senderName: "System",
-        timestamp: DateTime.now(),
-      ));
+      chatsProvider.addMessageToCurrentChatRoom(
+          "APIキーを設定すると、OpenAIのAPIを利用できます。", "error", "System");
       return;
     }
 
-    ChatMessage message = ChatMessage(
-      id: id,
-      groupId: groupId,
-      role: "system",
-      text: "...",
-      senderName: "System",
-      timestamp: DateTime.now(),
-    );
-    chatsProvider.addMessage(message);
+    int messageId =
+        chatsProvider.addMessageToCurrentChatRoom("...", "blank", "System");
+    int roomId = chatsProvider.currentChatRoom.id;
 
     try {
       OpenAI.apiKey = settingsProvider.apiKey;
+      List<OpenAIChatCompletionChoiceMessageModel> messages =
+          _getOpenAIMessages(chatsProvider.currentChatRoom);
       OpenAIChatCompletionModel chatCompletion = await OpenAI.instance.chat
-          .create(
-              model: settingsProvider.langModel,
-              messages: _getOpenAIMessages(chatsProvider.messages, groupId));
-      message.role = "assistant";
-      message.text = chatCompletion.choices.first.message.content;
-      message.senderName = "Assistant";
+          .create(model: settingsProvider.langModel, messages: messages);
+
+      chatsProvider.editMessageToChatRoom(
+          roomId,
+          messageId,
+          chatCompletion.choices.first.message.content,
+          "assistant",
+          "Assistant");
     } catch (e) {
-      message.role = "error";
-      message.text = e.toString();
-      message.senderName = "System";
+      chatsProvider.editMessageToChatRoom(
+          roomId, messageId, e.toString(), "error", "System");
     }
-    message.timestamp = DateTime.now();
-    chatsProvider.editMessage(message, id);
   }
 
   void _handleSubmitted(String text) {
@@ -161,8 +138,7 @@ class ChatScreenState extends State<ChatScreen> {
         Provider.of<ChatsProvider>(context, listen: true);
     final SettingsProvider settingsProvider =
         Provider.of<SettingsProvider>(context, listen: true);
-    final chatMessages = chatsProvider
-        .getMessagesByGroupId()
+    final chatMessages = chatsProvider.currentChatRoom.messages
         .map((chatMessage) => ChatMessageFrame(
               text: chatMessage.text,
               name: chatMessage.senderName,

@@ -101,6 +101,7 @@ class EditMessageScreenState extends State<EditMessageScreen> {
         itemBuilder: (BuildContext context, int index) {
           return ListTile(
             title: Text(settingsProvider.templates[index]),
+            onTap: () => _showEditMessageDialog(settingsProvider, index),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

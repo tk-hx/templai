@@ -11,6 +11,11 @@ class SettingScreen extends StatefulWidget {
 
 class SettingScreenState extends State<SettingScreen> {
   late TextEditingController _apiController;
+  var models = <String>[
+    'gpt-3.5-turbo',
+    // 'text-davinci-003',
+    // 'gpt-4',
+  ];
 
   @override
   void initState() {
@@ -50,11 +55,7 @@ class SettingScreenState extends State<SettingScreen> {
   Widget build(BuildContext context) {
     SettingsProvider settingsProvider = Provider.of<SettingsProvider>(context);
     _apiController.text = settingsProvider.apiKey;
-    var models = <String>[
-      'gpt-3.5-turbo',
-      // 'text-davinci-003',
-      // 'gpt-4',
-    ];
+
     int modelsIndex = models.indexOf(settingsProvider.langModel) > 0
         ? models.indexOf(settingsProvider.langModel)
         : 0;

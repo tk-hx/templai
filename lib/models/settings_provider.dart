@@ -33,7 +33,7 @@ class SettingsProvider with ChangeNotifier {
   final SharedPreferences _prefs;
   List<String> _templates = [];
   String _apiKey = '';
-  String _langModel = '';
+  String _langModel = 'gpt-3.5-turbo';
 
   SettingsProvider(this._prefs) {
     // 初期化時に保存された設定を読み込む
@@ -45,7 +45,9 @@ class SettingsProvider with ChangeNotifier {
         final settingModel = SettingModel.fromJson(decodedJson);
         _templates = settingModel.templates;
         _apiKey = settingModel.apiKey;
-        _langModel = settingModel.langModel;
+        _langModel = (settingModel.langModel.isEmpty)
+            ? 'gpt-3.5-turbo'
+            : settingModel.langModel;
       } catch (e) {
         // 何もしない
       }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:math';
 
 class ChatMessage {
   int id;
-  int groupId;
   String text;
   String role;
   String senderName;
@@ -12,9 +12,8 @@ class ChatMessage {
 
   ChatMessage({
     required this.id,
-    required this.groupId,
-    required this.role,
     required this.text,
+    required this.role,
     required this.senderName,
     required this.timestamp,
   });
@@ -22,9 +21,8 @@ class ChatMessage {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'groupId': groupId,
-      'role': role,
       'text': text,
+      'role': role,
       'senderName': senderName,
       'timestamp': timestamp.toIso8601String(),
     };
@@ -33,133 +31,170 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       id: json['id'] as int,
-      groupId: json['groupId'] as int,
-      role: json['role'] as String,
       text: json['text'] as String,
+      role: json['role'] as String,
       senderName: json['senderName'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }
 }
 
-class ChatsProvider with ChangeNotifier {
-  final SharedPreferences _prefs;
-  List<ChatMessage> _messages = [];
-  int _currentGroupId = 0;
+class ChatRoom {
+  int id;
+  List<ChatMessage> messages = [];
 
-  ChatsProvider(this._prefs) {
-    // 初期化時に保存された設定を読み込む
-    final chatMessageJson = _prefs.getString('chatMessage');
-    if (chatMessageJson != null) {
-      try {
-        final decodedJson = jsonDecode(chatMessageJson) as List<dynamic>;
-        _messages =
-            decodedJson.map((json) => ChatMessage.fromJson(json)).toList();
-        _currentGroupId = _messages.last.groupId;
-      } catch (e) {
-        _messages = [];
-        _currentGroupId = 0;
-        _updateChatMessage();
-        return;
-      }
-    }
-  }
+  int maxMessageId = 0;
 
-  List<ChatMessage> get messages => _messages;
-  set messages(List<ChatMessage> value) {
-    _messages = value;
-    _updateChatMessage();
-    notifyListeners();
-  }
-
-  List<ChatMessage> getMessagesByGroupId() {
-    return _messages.where((e) => e.groupId == _currentGroupId).toList();
+  ChatRoom({
+    required this.id,
+    required this.messages,
+  }) {
+    maxMessageId =
+        (messages.isEmpty) ? 0 : messages.map((e) => e.id).reduce(max);
   }
 
   void addMessage(ChatMessage message) {
-    _messages.add(message);
-    _updateChatMessage();
+    messages.add(message);
+    maxMessageId++;
+  }
+
+  void deleteMessage(int messageId) {
+    messages.removeWhere((message) => message.id == messageId);
+    maxMessageId =
+        (messages.isEmpty) ? 0 : messages.map((e) => e.id).reduce(max);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'messages': messages.map((e) => e.toJson()).toList(),
+    };
+  }
+
+  factory ChatRoom.fromJson(Map<String, dynamic> json) {
+    return ChatRoom(
+      id: json['id'] as int,
+      messages: (json['messages'] as List<dynamic>)
+          .map((e) => ChatMessage.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+class ChatsProvider with ChangeNotifier {
+  final SharedPreferences _prefs;
+  int _maxChatRoomId = 0;
+  List<ChatRoom> _chatRooms = [];
+  ChatRoom _currentChatRoom = ChatRoom(id: 1, messages: []);
+
+  ChatsProvider(this._prefs) {
+    final jsonString = _prefs.getString('chatRooms');
+    if (jsonString != null) {
+      final List<dynamic> jsonList = json.decode(jsonString);
+      _chatRooms = jsonList.map((e) => ChatRoom.fromJson(e)).toList();
+      _maxChatRoomId =
+          (_chatRooms.isEmpty) ? 0 : _chatRooms.map((e) => e.id).reduce(max);
+    } else {
+      addChatRoom([]);
+    }
+    _currentChatRoom = _chatRooms.last;
+  }
+
+  List<ChatRoom> get chatRooms => _chatRooms;
+  ChatRoom get currentChatRoom => _currentChatRoom;
+
+  void addChatRoom(List<ChatMessage> messages) {
+    _chatRooms.add(ChatRoom(id: _maxChatRoomId + 1, messages: messages));
+    _maxChatRoomId++;
+    _currentChatRoom = _chatRooms[_chatRooms.length - 1];
+    _saveChatRoomsToPrefs();
     notifyListeners();
   }
 
-  void editMessage(ChatMessage message, int id) {
-    final index = _messages.indexWhere((e) => e.id == id);
-    _messages[index] = message;
-    _updateChatMessage();
+  void deleteChatRoom(int roomId) {
+    int chatRoomIndex = _chatRooms.indexWhere((room) => room.id == roomId);
+    _chatRooms.removeAt(chatRoomIndex);
+    _maxChatRoomId =
+        (_chatRooms.isEmpty) ? 0 : _chatRooms.map((e) => e.id).reduce(max);
+    int currentChatRoomIndex = (chatRoomIndex < _chatRooms.length)
+        ? chatRoomIndex
+        : _chatRooms.length - 1;
+    _currentChatRoom = _chatRooms[currentChatRoomIndex];
+    _saveChatRoomsToPrefs();
     notifyListeners();
   }
 
-  void removeMessage() {
-    if (_messages.isEmpty) {
+  void deleteAllChatRoom() {
+    _chatRooms.clear();
+    _maxChatRoomId = 0;
+    addChatRoom([]);
+  }
+
+  int getCurrentChatRoomIndex() {
+    int currentChatRoomIndex = _chatRooms.indexOf(_currentChatRoom);
+    return currentChatRoomIndex;
+  }
+
+  void incrementCurrentChatRoom({bool append = false}) {
+    if (append) {
+      addChatRoom([]);
+      _currentChatRoom = _chatRooms.last;
+      notifyListeners();
       return;
     }
-    for (int i = _messages.length - 1; i >= 0; i--) {
-      // _messagesのgroupIdは常に順番である事を前提
-      // 後続のgroupIdを減らす(暫定対応)
-      if (_messages[i].groupId > _currentGroupId) {
-        _messages[i].groupId--;
-      } else if (_messages[i].groupId == _currentGroupId) {
-        _messages.removeAt(i);
-      } else {
-        break;
-      }
-    }
-    if (_messages.isEmpty) {
-      _currentGroupId = 0;
-    } else if (_currentGroupId > _messages.last.groupId) {
-      _currentGroupId = _messages.last.groupId;
-    }
-    _updateChatMessage();
-    notifyListeners();
-  }
-
-  void removeAllMessage() {
-    _messages = [];
-    _currentGroupId = 0;
-    _updateChatMessage();
-    notifyListeners();
-  }
-
-  int getLastId() {
-    if (_messages.isNotEmpty) {
-      return _messages.last.id;
-    } else {
-      return -1;
+    int currentChatRoomIndex = getCurrentChatRoomIndex();
+    if (currentChatRoomIndex < _chatRooms.length - 1) {
+      _currentChatRoom = _chatRooms[currentChatRoomIndex + 1];
+      notifyListeners();
+    } else if (currentChatRoomIndex == _chatRooms.length - 1) {
+      // addChatRoom([]);
     }
   }
 
-  int getLastGroupId() {
-    if (_messages.isNotEmpty) {
-      return _messages.last.groupId;
-    } else {
-      return 0;
+  void decrementCurrentChatRoom() {
+    int currentChatRoomIndex = getCurrentChatRoomIndex();
+    if (currentChatRoomIndex > 0) {
+      _currentChatRoom = _chatRooms[currentChatRoomIndex - 1];
     }
-  }
-
-  void incrementGroupId() {
-    final maxGroupId = (_messages.isNotEmpty) ? _messages.last.groupId : 0;
-    _currentGroupId =
-        (maxGroupId + 1 > _currentGroupId) ? _currentGroupId + 1 : 0;
-    _updateChatMessage();
     notifyListeners();
   }
 
-  void decrementGroupId() {
-    _currentGroupId = (_currentGroupId > 0) ? _currentGroupId - 1 : 0;
-    _updateChatMessage();
+  int addMessageToCurrentChatRoom(String text, String role, String senderName) {
+    ChatMessage message = ChatMessage(
+      id: _currentChatRoom.maxMessageId + 1,
+      text: text,
+      role: role,
+      senderName: senderName,
+      timestamp: DateTime.now(),
+    );
+    _currentChatRoom.addMessage(message);
+
+    _saveChatRoomsToPrefs();
+    notifyListeners();
+
+    return message.id;
+  }
+
+  void editMessageToChatRoom(
+      int roomId, int messageId, String text, String role, String senderName) {
+    if (_chatRooms.isEmpty) {
+      return;
+    }
+    int roomIndex = _chatRooms.indexWhere((e) => e.id == roomId);
+    int messageIndex =
+        _chatRooms[roomIndex].messages.indexWhere((e) => e.id == messageId);
+
+    _chatRooms[roomIndex].messages[messageIndex].text = text;
+    _chatRooms[roomIndex].messages[messageIndex].role = role;
+    _chatRooms[roomIndex].messages[messageIndex].senderName = senderName;
+
+    _saveChatRoomsToPrefs();
     notifyListeners();
   }
 
-  int getCurrentGroupId() {
-    return _currentGroupId;
-  }
-
-  // ChatMessageを更新するメソッド
-  void _updateChatMessage() {
-    // ChatMessageをJSONに変換して保存する
-    final jsonList = _messages.map((message) => message.toJson()).toList();
-    final json = jsonEncode(jsonList);
-    debugPrint(json);
-    _prefs.setString('chatMessage', json);
+  void _saveChatRoomsToPrefs() {
+    final List<dynamic> jsonList = _chatRooms.map((e) => e.toJson()).toList();
+    final jsonString = json.encode(jsonList);
+    _prefs.setString('chatRooms', jsonString);
   }
 }
