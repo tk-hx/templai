@@ -119,7 +119,12 @@ class ChatsProvider with ChangeNotifier {
     int currentChatRoomIndex = (chatRoomIndex < _chatRooms.length)
         ? chatRoomIndex
         : _chatRooms.length - 1;
-    _currentChatRoom = _chatRooms[currentChatRoomIndex];
+    if (currentChatRoomIndex < 0) {
+      _maxChatRoomId = 0;
+      addChatRoom([]);
+    } else {
+      _currentChatRoom = _chatRooms[currentChatRoomIndex];
+    }
     _saveChatRoomsToPrefs();
     notifyListeners();
   }

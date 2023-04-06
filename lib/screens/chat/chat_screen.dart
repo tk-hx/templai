@@ -9,12 +9,11 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
+  String systemText = '';
 
   List<OpenAIChatCompletionChoiceMessageModel> _getOpenAIMessages(
       ChatRoom chatRoom) {
-    return chatRoom.messages
-        .where((e) => e.role != "error" && e.role != "blank")
-        .map((e) {
+    return chatRoom.messages.where((e) => e.role != "blank").map((e) {
       OpenAIChatMessageRole role;
       switch (e.role) {
         case "user":
@@ -46,8 +45,12 @@ class ChatScreenState extends State<ChatScreen> {
 
     if (settingsProvider.apiKey.isEmpty) {
       chatsProvider.addMessageToCurrentChatRoom(
-          "APIキーを設定すると、OpenAIのAPIを利用できます。", "error", "System");
+          "APIキーを設定すると、OpenAIのAPIを利用できます。", "blank", "System");
       return;
+    }
+
+    if (systemText != '') {
+      chatsProvider.addMessageToCurrentChatRoom(systemText, "system", "System");
     }
 
     int messageId =
@@ -56,10 +59,10 @@ class ChatScreenState extends State<ChatScreen> {
 
     try {
       OpenAI.apiKey = settingsProvider.apiKey;
-      List<OpenAIChatCompletionChoiceMessageModel> messages =
-          _getOpenAIMessages(chatsProvider.currentChatRoom);
       OpenAIChatCompletionModel chatCompletion = await OpenAI.instance.chat
-          .create(model: settingsProvider.langModel, messages: messages);
+          .create(
+              model: settingsProvider.langModel,
+              messages: _getOpenAIMessages(chatsProvider.currentChatRoom));
 
       chatsProvider.editMessageToChatRoom(
           roomId,
@@ -69,7 +72,7 @@ class ChatScreenState extends State<ChatScreen> {
           "Assistant");
     } catch (e) {
       chatsProvider.editMessageToChatRoom(
-          roomId, messageId, e.toString(), "error", "System");
+          roomId, messageId, e.toString(), "blank", "System");
     }
   }
 
@@ -82,21 +85,22 @@ class ChatScreenState extends State<ChatScreen> {
     _getOpenAIMessage(text);
   }
 
-  void _showTemplates(List<String> messages) {
+  void _showTemplates(List<SettingTemplate> templates) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(
           title: const Text("定型文を選択してください"),
-          children: messages.map((templateMessage) {
+          children: templates.map((template) {
             return SimpleDialogOption(
               onPressed: () {
                 Navigator.pop(context);
                 setState(() {
-                  _textController.text = templateMessage;
+                  systemText = template.systemText;
+                  _textController.text = template.fixedText;
                 });
               },
-              child: Text(templateMessage),
+              child: Text(template.title),
             );
           }).toList(),
         );
@@ -104,7 +108,7 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTextComposer(List<String> messages) {
+  Widget _buildTextComposer(List<SettingTemplate> templates) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       margin: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -112,7 +116,7 @@ class ChatScreenState extends State<ChatScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.list),
-            onPressed: () => _showTemplates(messages),
+            onPressed: () => _showTemplates(templates),
           ),
           Flexible(
             child: TextFormField(
@@ -121,12 +125,23 @@ class ChatScreenState extends State<ChatScreen> {
                 hintText: "メッセージを入力してください",
               ),
               maxLines: null,
+              onChanged: (value) {
+                if (value.isEmpty) {
+                  setState(() {
+                    systemText = '';
+                  });
+                }
+              },
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () => _handleSubmitted(_textController.text),
-          ),
+              icon: const Icon(Icons.send),
+              onPressed: () {
+                _handleSubmitted(_textController.text);
+                setState(() {
+                  systemText = '';
+                });
+              }),
         ],
       ),
     );
@@ -139,6 +154,7 @@ class ChatScreenState extends State<ChatScreen> {
     final SettingsProvider settingsProvider =
         Provider.of<SettingsProvider>(context, listen: true);
     final chatMessages = chatsProvider.currentChatRoom.messages
+        .where((e) => e.role != "system")
         .map((chatMessage) => ChatMessageFrame(
               text: chatMessage.text,
               name: chatMessage.senderName,

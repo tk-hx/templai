@@ -4,7 +4,7 @@ import 'common.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Bindingの初期化
+  WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
 
   LicenseRegistry.addLicense(() async* {

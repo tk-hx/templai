@@ -2,27 +2,53 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+class SettingTemplate {
+  String title;
+  String systemText;
+  String fixedText;
+
+  SettingTemplate(
+      {required this.title, required this.systemText, required this.fixedText});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'systemText': systemText,
+      'fixedText': fixedText,
+    };
+  }
+
+  factory SettingTemplate.fromJson(Map<String, dynamic> json) {
+    return SettingTemplate(
+      title: json['title'] as String,
+      systemText: json['systemText'] as String,
+      fixedText: json['fixedText'] as String,
+    );
+  }
+}
+
 class SettingModel {
-  List<String> templates;
+  List<SettingTemplate> templates;
   String apiKey;
   String langModel;
 
   SettingModel(
       {required this.templates, required this.apiKey, required this.langModel});
 
-  // Map<String, dynamic>に変換するメソッド
   Map<String, dynamic> toJson() {
     return {
-      'templates': templates,
+      'templates': templates.map((template) => template.toJson()).toList(),
       'apiKey': apiKey,
       'langModel': langModel,
     };
   }
 
-  // Map<String, dynamic>から復元するファクトリーメソッド
   factory SettingModel.fromJson(Map<String, dynamic> json) {
     return SettingModel(
-      templates: (json['templates'] as List<dynamic>).cast<String>(),
+      templates: (json['templates'] as List<dynamic>)
+          .map((dynamic item) =>
+              SettingTemplate.fromJson(item as Map<String, dynamic>))
+          .toList(),
       apiKey: json['apiKey'] as String,
       langModel: json['langModel'] as String,
     );
@@ -31,12 +57,11 @@ class SettingModel {
 
 class SettingsProvider with ChangeNotifier {
   final SharedPreferences _prefs;
-  List<String> _templates = [];
+  List<SettingTemplate> _templates = [];
   String _apiKey = '';
   String _langModel = 'gpt-3.5-turbo';
 
   SettingsProvider(this._prefs) {
-    // 初期化時に保存された設定を読み込む
     final settingModelJson = _prefs.getString('settingModel');
     if (settingModelJson != null) {
       try {
@@ -55,9 +80,9 @@ class SettingsProvider with ChangeNotifier {
     _updateSettingModel();
   }
 
-  List<String> get templates => _templates;
+  List<SettingTemplate> get templates => _templates;
 
-  set templates(List<String> value) {
+  set templates(List<SettingTemplate> value) {
     _templates = value;
     _updateSettingModel();
     notifyListeners();
@@ -79,7 +104,6 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // SettingModelを更新するメソッド
   void _updateSettingModel() {
     final settingModel = SettingModel(
         templates: _templates, apiKey: _apiKey, langModel: _langModel);
