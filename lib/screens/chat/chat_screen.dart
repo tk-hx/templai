@@ -13,7 +13,9 @@ class ChatScreenState extends State<ChatScreen> {
 
   List<OpenAIChatCompletionChoiceMessageModel> _getOpenAIMessages(
       ChatRoom chatRoom) {
-    return chatRoom.messages.where((e) => e.role != "blank").map((e) {
+    return chatRoom.messages
+        .where((e) => e.role != "blank" && e.text != "")
+        .map((e) {
       OpenAIChatMessageRole role;
       switch (e.role) {
         case "user":
