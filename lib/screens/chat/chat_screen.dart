@@ -112,36 +112,48 @@ class ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       margin: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: Row(
+      child: Stack(
         children: [
-          IconButton(
-            icon: const Icon(Icons.list),
-            onPressed: () => _showTemplates(templates),
-          ),
-          Flexible(
-            child: TextFormField(
-              controller: _textController,
-              decoration: const InputDecoration.collapsed(
-                hintText: "メッセージを入力してください",
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.list),
+                onPressed: () => _showTemplates(templates),
               ),
-              maxLines: null,
-              onChanged: (value) {
-                if (value.isEmpty) {
-                  setState(() {
-                    systemText = '';
-                  });
-                }
-              },
-            ),
+              Flexible(
+                child: TextFormField(
+                  controller: _textController,
+                  decoration: const InputDecoration.collapsed(
+                    hintText: "メッセージを入力してください",
+                  ),
+                  maxLines: null,
+                  onChanged: (value) {
+                    if (value.isEmpty) {
+                      setState(() {
+                        systemText = '';
+                      });
+                    }
+                  },
+                ),
+              ),
+              IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () {
+                    _handleSubmitted(_textController.text);
+                    setState(() {
+                      systemText = '';
+                    });
+                  }),
+            ],
           ),
-          IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: () {
-                _handleSubmitted(_textController.text);
-                setState(() {
-                  systemText = '';
-                });
-              }),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: (systemText != "")
+                ? const Text("+システム文あり",
+                    style: TextStyle(fontSize: 10, color: Colors.blueAccent))
+                : const Text(""),
+          ),
         ],
       ),
     );
