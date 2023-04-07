@@ -178,7 +178,8 @@ class ChatScreenState extends State<ChatScreen> {
         .toList();
 
     return Scaffold(
-      body: Column(
+      body: SelectionArea(
+          child: Column(
         children: [
           Flexible(
             child: ListView.builder(
@@ -196,7 +197,7 @@ class ChatScreenState extends State<ChatScreen> {
             child: _buildTextComposer(settingsProvider.templates),
           ),
         ],
-      ),
+      )),
     );
   }
 }

@@ -1,4 +1,4 @@
-package com.example.templai
+package com.templai.app
 
 import io.flutter.embedding.android.FlutterActivity
 

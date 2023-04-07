@@ -57,7 +57,21 @@ class SettingModel {
 
 class SettingsProvider with ChangeNotifier {
   final SharedPreferences _prefs;
-  List<SettingTemplate> _templates = [];
+  List<SettingTemplate> _templates = [
+    SettingTemplate(
+        title: "定型文のサンプル",
+        systemText: "システム文はチャットのやり取りに表示されませんが、AIによって認識されます。",
+        fixedText: "これは定型文のサンプルです。\n"
+            "定型文編集画面から編集できます。\n"
+            "AIとのチャットを開始するには、設定画面からAPI Keyを設定してください。"),
+    SettingTemplate(
+        title: "ツアープランナーのサンプル",
+        systemText: "以下の制約で答えてください。\n"
+            "- 日本語で記述する\n"
+            "- 30文字以内で記述する\n"
+            "- Step by Stepで考える",
+        fixedText: "あなたはツアープランナーです。\n")
+  ];
   String _apiKey = '';
   String _langModel = 'gpt-3.5-turbo';
 
